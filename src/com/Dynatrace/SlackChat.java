@@ -112,6 +112,8 @@ public class SlackChat implements ActionV2 {
 			con.setConnectTimeout(5000);
 			con.setReadTimeout(20000);
 			
+			// SET CHANNEL
+			String channel = env.getConfigString("channel");
 			//SET VARIABLES
 			OutputStream out;
 			InputStream in;
@@ -177,6 +179,7 @@ public class SlackChat implements ActionV2 {
 
             jsonObj.put("username", "dynatrace");
             jsonObj.put("icon_url", "https://media.glassdoor.com/sqll/309684/dynatrace-squarelogo-1458744847928.png");
+	    jsonObj.put("channel", channel);
 			jsonObj.put("text", state);
             jsonObj.put("attachments", attachArray);
 
