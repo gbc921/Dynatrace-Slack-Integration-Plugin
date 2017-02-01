@@ -7,7 +7,6 @@
 
 package com.Dynatrace;
 
-import com.dynatrace.diagnostics.pdk.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -19,6 +18,12 @@ import java.util.logging.Logger;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+
+import com.dynatrace.diagnostics.pdk.ActionEnvironment;
+import com.dynatrace.diagnostics.pdk.ActionV2;
+import com.dynatrace.diagnostics.pdk.Incident;
+import com.dynatrace.diagnostics.pdk.Status;
+import com.dynatrace.diagnostics.pdk.Violation;
 
 public class SlackChat implements ActionV2 {
 
