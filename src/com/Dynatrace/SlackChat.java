@@ -28,6 +28,7 @@ import com.dynatrace.diagnostics.pdk.Violation;
 public class SlackChat implements ActionV2 {
 
 	private static final Logger log = Logger.getLogger(SlackChat.class.getName());
+	private Config confs = new Config();
 
 	/**
 	 * Initializes the Plugin. This method is called in the following cases:
@@ -55,7 +56,12 @@ public class SlackChat implements ActionV2 {
 	 */
 	@Override
 	public Status setup(ActionEnvironment env) throws Exception {
-		// TODO
+
+		confs.setWebHookUrl(env.getConfigUrl("url"));
+		confs.setChannel(env.getConfigString("channel"));
+		confs.setNotifyAllChannel(env.getConfigBoolean("notifyAll"));
+		confs.setLinkedDashboard(env.getConfigString("linkedDashboard"));
+
 		return new Status(Status.StatusCode.Success);
 	}
 
@@ -103,9 +109,8 @@ public class SlackChat implements ActionV2 {
 			log.fine("Incident " + message + " triggered.");
 
 			// SET INPUT FIELDS
-			URL url = env.getConfigUrl("url");
-			boolean notifyAll = env.getConfigBoolean("notifyAll");
-			String dashboard = env.getConfigString("linkedDashboard");
+			URL url = confs.getWebHookUrl();
+			String dashboard = confs.getLinkedDashboard();
 
 			// OPEN URL CONNECTION AND SET TIMEOUTS - USES CONNECTION METHOD
 			// 'POST'
@@ -114,8 +119,6 @@ public class SlackChat implements ActionV2 {
 			con.setConnectTimeout(5000);
 			con.setReadTimeout(20000);
 
-			// SET CHANNEL
-			String channel = env.getConfigString("channel");
 			// SET VARIABLES
 			OutputStream out;
 			InputStream in;
@@ -127,7 +130,7 @@ public class SlackChat implements ActionV2 {
 			String state = "";
 			// Compose string chat_message => This message will be sent to the
 			// SlackChat channel
-			if (notifyAll) {
+			if (confs.isNotifyAllChannel()) {
 				state = "<!channel> ";
 			}
 			if (incident.isOpen()) {
@@ -186,7 +189,7 @@ public class SlackChat implements ActionV2 {
 
 			jsonObj.put("username", "dynatrace");
 			jsonObj.put("icon_url", "https://media.glassdoor.com/sqll/309684/dynatrace-squarelogo-1458744847928.png");
-			jsonObj.put("channel", channel);
+			jsonObj.put("channel", confs.getChannel());
 			jsonObj.put("text", state);
 			jsonObj.put("attachments", attachArray);
 
