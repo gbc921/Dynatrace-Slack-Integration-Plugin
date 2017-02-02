@@ -29,6 +29,7 @@ public class SlackChat implements ActionV2 {
 
 	private static final Logger log = Logger.getLogger(SlackChat.class.getName());
 	private Config confs = new Config();
+	private Connection con = new Connection();
 
 	/**
 	 * Initializes the Plugin. This method is called in the following cases:
@@ -61,6 +62,8 @@ public class SlackChat implements ActionV2 {
 		confs.setChannel(env.getConfigString("channel"));
 		confs.setNotifyAllChannel(env.getConfigBoolean("notifyAll"));
 		confs.setLinkedDashboard(env.getConfigString("linkedDashboard"));
+		
+		con.setConnection(confs.getChannel(), confs.getWebHookUrl());
 
 		return new Status(Status.StatusCode.Success);
 	}
@@ -112,19 +115,6 @@ public class SlackChat implements ActionV2 {
 			URL url = confs.getWebHookUrl();
 			String dashboard = confs.getLinkedDashboard();
 
-			// OPEN URL CONNECTION AND SET TIMEOUTS - USES CONNECTION METHOD
-			// 'POST'
-			HttpURLConnection con = (HttpURLConnection) url.openConnection();
-			con.setRequestMethod("POST");
-			con.setConnectTimeout(5000);
-			con.setReadTimeout(20000);
-
-			// SET VARIABLES
-			OutputStream out;
-			InputStream in;
-			int responseCode;
-			String responseBody;
-
 			// JSON CREATION
 			JSONObject jsonObj = new JSONObject();
 			String state = "";
@@ -156,106 +146,24 @@ public class SlackChat implements ActionV2 {
 				chat_message = chat_message + "Violated Measure: " + violation.getViolatedMeasure().getName()
 						+ " - Threshold: " + violation.getViolatedThreshold().getValue() + "\n";
 			}
+			
+			try {
+				con.sendMessage(con, confs, title, state, chat_message, incident.getSeverity().toString());
+			}
+			catch (Exception e) {
+				log.severe("ERROR");
+				log.severe(e.toString());
+				return new Status(Status.StatusCode.ErrorInternal);
+			}
 
 			// chat_message = chat_message + "</ul>";
 
-			/*
-			 * Create JSON Object => Will be sent to SlackChat via HTTP POST
-			 */
-			String severity = incident.getSeverity().toString();
-			String color = "good";
-			switch (severity) {
-			case "Error":
-				color = "danger";
-				break;
-			case "Warning":
-				color = "warning";
-				break;
-			default:
-				color = "good";
-			}
-
-			JSONObject attachment = new JSONObject();
-			attachment.put("title", title);
-			attachment.put("color", color);
-			attachment.put("text", chat_message);
-			if (!(dashboard == null || dashboard.equals("") || dashboard.isEmpty())) {
-				attachment.put("title_link", "http://" + incident.getServerName() + "/rest/management/reports/create/"
-						+ URLEncoder.encode(dashboard, "UTF-8").replaceAll("\\+", "%20"));
-			}
-			JSONArray attachArray = new JSONArray();
-
-			attachArray.add(attachment);
-
-			jsonObj.put("username", "dynatrace");
-			jsonObj.put("icon_url", "https://media.glassdoor.com/sqll/309684/dynatrace-squarelogo-1458744847928.png");
-			jsonObj.put("channel", confs.getChannel());
-			jsonObj.put("text", state);
-			jsonObj.put("attachments", attachArray);
-
-			// JSON TO STRING
-			String jsonString = jsonObj.toJSONString();
-
-			// LOG JSON STRING
-			log.fine("JSON String is: " + jsonString);
-
-			// JSON STRING TO BYTES
-			byte[] payload = jsonString.getBytes();
-
-			// SET CONNECTION OUTPUT
-			con.setFixedLengthStreamingMode(payload.length);
-			con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-			con.setDoOutput(true);
-
-			// LOG PROGRESS
-			log.fine("Trying to get output stream...");
-
-			// TRY TO GET OUTPUT STREAM
-			try {
-				out = con.getOutputStream();
-			}
-
-			// CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
-			catch (IOException e) {
-				log.severe("Exception thrown whilst getting output stream...");
-				log.severe(e.toString());
-				con.disconnect();
-				return new Status(Status.StatusCode.ErrorInternalException);
-			}
-
-			// LOG PROGRESS
-			log.fine("Trying to write to output stream");
-
-			// TRY TO SEND PAYLOAD
-			try {
-				out.write(payload);
-				out.close();
-			}
-
-			// CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
-			catch (IOException e) {
-				log.severe("Exception thrown whilst writing to output stream...");
-				log.severe(e.toString());
-				con.disconnect();
-				return new Status(Status.StatusCode.ErrorInternalException);
-			}
-
-			// LOG PROGRESS
-			log.fine("Trying to connect...");
-
-			// TRY TO GET RESPONSE CODE
-			try {
-				responseCode = con.getResponseCode();
-				log.fine("Response Code : " + responseCode);
-			}
-
-			// CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
-			catch (IOException e) {
-				log.severe("Exception thrown whilst writing to output stream...");
-				log.severe(e.toString());
-				con.disconnect();
-				return new Status(Status.StatusCode.ErrorInternalException);
-			}
+//			
+//			if (!(dashboard == null || dashboard.equals("") || dashboard.isEmpty())) {
+//				attachment.put("title_link", "http://" + incident.getServerName() + "/rest/management/reports/create/"
+//						+ URLEncoder.encode(dashboard, "UTF-8").replaceAll("\\+", "%20"));
+//			}
+			
 
 			// //TRY TO GET INPUT STREAM
 			// try{
@@ -283,11 +191,6 @@ public class SlackChat implements ActionV2 {
 			// log.severe(e.toString());
 			// return new Status (Status.StatusCode.ErrorInternalException);
 			// }
-
-			// DISCONNECT
-			finally {
-				con.disconnect();
-			}
 		}
 
 		return new Status(Status.StatusCode.Success);
@@ -332,6 +235,6 @@ public class SlackChat implements ActionV2 {
 	 */
 	@Override
 	public void teardown(ActionEnvironment env) throws Exception {
-		// TODO
+		con.disconnect();
 	}
 }

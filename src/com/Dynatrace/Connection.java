@@ -6,20 +6,17 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.util.logging.Logger;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-
-import com.dynatrace.diagnostics.pdk.Status;
 
 public class Connection {
 	private static final Logger log = Logger.getLogger(SlackChat.class.getName());
 
 	private HttpURLConnection con;
 
-	public HttpURLConnection estabilishConnection(String channel, URL url) throws IOException {
+	public HttpURLConnection setConnection(String channel, URL url) throws IOException {
 		// open url connection and set timeouts - uses connection method 'post'
 		con = (HttpURLConnection) url.openConnection();
 		con.setRequestMethod("POST");
@@ -30,9 +27,13 @@ public class Connection {
 
 	}
 
+	public void disconnect() {
+		con.disconnect();
+	}
+
 	@SuppressWarnings("unchecked") // jsonObject
-	public void sendMessage(HttpURLConnection con, Config config, String title, String state, String msg,
-			String severity) throws UnsupportedEncodingException {
+	public void sendMessage(Connection con, Config config, String title, String state, String msg,
+			String severity) throws UnsupportedEncodingException, IOException {
 
 		JSONObject attachment = new JSONObject();
 		attachment.put("title", title);
@@ -57,16 +58,16 @@ public class Connection {
 		jsonObj.put("text", state);
 		jsonObj.put("attachments", attachArray);
 
-		
+		sendMessage(jsonObj);
 
 	}
 
-	private void sendMessage(JSONObject jsonObj) {
+	private void sendMessage(JSONObject jsonObj) throws IOException {
 		OutputStream out = null;
 		InputStream in = null;
 		int responseCode = 0;
 		String responseBody = "";
-		
+
 		// json to string
 		String jsonString = jsonObj.toJSONString();
 		// json string to bytes
@@ -115,8 +116,10 @@ public class Connection {
 			log.severe("Exception thrown whilst writing to output stream...");
 			log.severe(e.toString());
 			con.disconnect();
-		}		
-		
+		} finally {
+			con.disconnect();
+		}
+
 	}
 
 	private String getSeverityColor(String severity) {
