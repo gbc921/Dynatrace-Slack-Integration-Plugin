@@ -87,16 +87,6 @@ public class SlackChat implements ActionV2 {
 	 */
 	@Override
 	public Status execute(ActionEnvironment env) throws Exception {
-		/*
-		 * // this sample shows how to receive and act on incidents
-		 * Collection<Incident> incidents = env.getIncidents(); for (Incident
-		 * incident : incidents) { String message = incident.getMessage();
-		 * log.info("Incident " + message + " triggered."); for (Violation
-		 * violation : incident.getViolations()) { log.info("Measure " +
-		 * violation.getViolatedMeasure().getName() + " violoated threshold.");
-		 * } }
-		 */
-
 		// MAP ALL INCIDENTS A COLLECTION
 		Collection<Incident> incidents = env.getIncidents();
 
