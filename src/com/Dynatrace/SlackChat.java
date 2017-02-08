@@ -233,4 +233,22 @@ public class SlackChat implements ActionV2 {
 	public void teardown(ActionEnvironment env) throws Exception {
 		con.disconnect();
 	}
+
+	public String patternFinder(String regex, String textToMatch) {
+		Pattern p = null;
+		Matcher m = null;
+
+		log.warning("PATTERN: " + regex + "=" + textToMatch);
+		p = Pattern.compile(regex);
+		m = p.matcher(textToMatch);
+		if (m.find()) {
+			log.finer(m.group(1).toString());
+			// TODO: we should iterate here (and return an array)
+			// to cover other cases
+			return m.group(1).toString();
+
+		} else
+			log.finer("null");
+		return null;
+	}
 }
