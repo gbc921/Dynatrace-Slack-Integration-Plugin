@@ -6,7 +6,7 @@
     <information>
       <category value="" />
       <displayname value="SlackChat" />
-      <description value="This Dynatrace plugin can send incident messages to a webhook defined in slack" />
+      <description value="This Dynatrace plugin can send incident messages to a webhook and a channel defined in slack." />
       <supportlevel value="unsupported" />
     </information>
     <configuration>

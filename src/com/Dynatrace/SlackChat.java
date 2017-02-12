@@ -9,6 +9,8 @@ package com.Dynatrace;
 
 import java.net.URL;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,6 +28,7 @@ public class SlackChat implements ActionV2 {
 	private static final Logger log = Logger.getLogger(SlackChat.class.getName());
 	private Config confs = new Config();
 	private Connection con = new Connection();
+	private Map<String, Incident> dbMonitorIncident = new HashMap<String, Incident>();
 
 	/**
 	 * Initializes the Plugin. This method is called in the following cases:
@@ -58,8 +61,9 @@ public class SlackChat implements ActionV2 {
 		confs.setChannel(env.getConfigString("channel"));
 		confs.setNotifyAllChannel(env.getConfigBoolean("notifyAll"));
 		confs.setLinkedDashboard(env.getConfigString("linkedDashboard"));
-		
-		con.setConnection(confs.getChannel(), confs.getWebHookUrl());
+
+		// connection to SlackChat needs
+		// to be started and finished at every message
 
 		return new Status(Status.StatusCode.Success);
 	}
@@ -87,98 +91,50 @@ public class SlackChat implements ActionV2 {
 	 */
 	@Override
 	public Status execute(ActionEnvironment env) throws Exception {
-		// MAP ALL INCIDENTS A COLLECTION
+		log.finer("Start Execute");
+		// Map all incidents to a collection
 		Collection<Incident> incidents = env.getIncidents();
 
-		// FOR EACH INCIDENT
 		for (Incident incident : incidents) {
-
-			// LOG INCIDENT MESSAGE
-			String message = incident.getMessage();
-			log.fine("Incident " + message + " triggered.");
-
-			// SET INPUT FIELDS
-			URL url = confs.getWebHookUrl();
-			String dashboard = confs.getLinkedDashboard();
-
-			// JSON CREATION
-			JSONObject jsonObj = new JSONObject();
-			String state = "";
-			// Compose string chat_message => This message will be sent to the
-			// SlackChat channel
-			if (confs.isNotifyAllChannel()) {
-				state = "<!channel> ";
+			log.info(incident.getIncidentRule().getName().toString());
+			log.info(incident.getMessage());
+			// the point here is to check for a DBMonitor plugin incident
+			// when that's the case, the column value incident comes "repeated"
+			// 3 times
+			// the difference is very small btw the 3, and they are called by
+			// the execute method
+			// so the plugin does not know whether the next incident is related
+			// to a DBMonitor or not
+			// TODO: Get only the two last calls from DBMonitor incident
+			// The last two have the real column name and actual value. The 1st
+			// one is generic
+			if (isDbMonitorPlugin(incident.getMessage().toString())) {
+				log.info("DB Monitor");
+				if (isDbMonitorIncidentRepeated(dbMonitorIncident, incident.getIncidentRule().getName().toString())) {
+					log.info("Do nothing");
+					// do nothing
+					// if it is a dbmonitor incident it should have been sent
+					// before by the else below
+				} else {
+					log.info("Store and Send DB Monitor incident");
+					// store incident in case of the next incident
+					// (being called by the execute() method again)
+					// is the same DBMonitor incident name,
+					// so we do not alert it again
+					dbMonitorIncident.put(incident.getIncidentRule().getName().toString(), incident);
+					prepareAndSendMessage(incident);
+				}
+			} else {
+				log.info("NOT DB Monitor");
+				try {
+					dbMonitorIncident.clear();
+					prepareAndSendMessage(incident);
+				} catch (Exception e) {
+					log.severe("ERROR: " + e.toString());
+					return new Status(Status.StatusCode.ErrorInternal);
+				}
 			}
-			if (incident.isOpen()) {
-				state = state + "dynatrace incident triggered:";
-			} else if (incident.isClosed()) {
-				state = state + "dynatrace incident ended:";
-			}
-			String title = incident.getIncidentRule().getName();
-			String chat_message = "";
-			// chat_message = chat_message + " <ul>";
-			// chat_message = chat_message + "Incident UUID: " +
-			// incident.getKey().getUUID() + "\n";
-
-			chat_message = chat_message + "Incident start: " + incident.getStartTime() + "\n";
-			chat_message = chat_message + "Incident end: " + incident.getEndTime() + "\n";
-
-			// chat_message = chat_message + "<li><strong>Status state
-			// code:</strong> " + incident.getState() + "</li>";
-
-			chat_message = chat_message + "Message: " + message + "\n";
-
-			for (Violation violation : incident.getViolations()) {
-				chat_message = chat_message + "Violated Measure: " + violation.getViolatedMeasure().getName()
-						+ " - Threshold: " + violation.getViolatedThreshold().getValue() + "\n";
-			}
-			
-			try {
-				con.sendMessage(con, confs, title, state, chat_message, incident.getSeverity().toString());
-			}
-			catch (Exception e) {
-				log.severe("ERROR");
-				log.severe(e.toString());
-				return new Status(Status.StatusCode.ErrorInternal);
-			}
-
-			// chat_message = chat_message + "</ul>";
-
-//			
-//			if (!(dashboard == null || dashboard.equals("") || dashboard.isEmpty())) {
-//				attachment.put("title_link", "http://" + incident.getServerName() + "/rest/management/reports/create/"
-//						+ URLEncoder.encode(dashboard, "UTF-8").replaceAll("\\+", "%20"));
-//			}
-			
-
-			// //TRY TO GET INPUT STREAM
-			// try{
-			// if(responseCode == 200){
-			// in = con.getInputStream();
-			// }
-			// else{
-			// in = con.getErrorStream();
-			// }
-			//
-			// BufferedReader bufferReader = new BufferedReader(new
-			// InputStreamReader(in));
-			// responseBody = bufferReader.readLine();
-			// bufferReader.close();
-			// if(responseCode != 200){
-			// log.warning("Response code was: " + responseCode);
-			// log.warning("Error received from PagerDuty: " + responseBody);
-			// }
-			// }
-			//
-			// //CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
-			// catch (IOException e) {
-			// log.severe("Exception thrown whilst reading from input
-			// stream...");
-			// log.severe(e.toString());
-			// return new Status (Status.StatusCode.ErrorInternalException);
-			// }
 		}
-
 		return new Status(Status.StatusCode.Success);
 	}
 
@@ -221,24 +177,103 @@ public class SlackChat implements ActionV2 {
 	 */
 	@Override
 	public void teardown(ActionEnvironment env) throws Exception {
+		log.info("Teardown: Disconnecting");
 		con.disconnect();
 	}
 
-	public String patternFinder(String regex, String textToMatch) {
+	private String patternFinder(String regex, String textToMatch) {
 		Pattern p = null;
 		Matcher m = null;
 
 		log.warning("PATTERN: " + regex + "=" + textToMatch);
 		p = Pattern.compile(regex);
 		m = p.matcher(textToMatch);
+
 		if (m.find()) {
 			log.finer(m.group(1).toString());
 			// TODO: we should iterate here (and return an array)
 			// to cover other cases
 			return m.group(1).toString();
+		}
 
-		} else
-			log.finer("null");
+		log.finer("null");
 		return null;
+	}
+
+	private boolean isDbMonitorPlugin(String message) {
+		if (message.contains("Query Monitor")) {
+			return true;
+		}
+		// look for something like "...[queryName->columName]..."
+		else if (patternFinder("\\[\\w+->\\w+\\]", message) != null) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	private boolean isDbMonitorIncidentRepeated(Map<String, Incident> dbMonitorIncident, String alertName) {
+		if (dbMonitorIncident.containsKey(alertName)) {
+			log.info("Has the key: " + alertName);
+
+			Incident incident = dbMonitorIncident.get(alertName);
+			long timestampDiff = System.currentTimeMillis() - incident.getStartTime().getTimestampInMs();
+
+			log.info("timestamp incident: " + String.valueOf(incident.getStartTime().getTimestampInMs()));
+			log.info("timestamp Now: " + String.valueOf(System.currentTimeMillis()));
+			log.info("timestamp diff: " + String.valueOf(timestampDiff));
+			// it may be the case that the same incident happens again without
+			// being the repeated scenario
+			if (timestampDiff <= 60000) {
+				log.info("Is less then 60s from this last alert");
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public void prepareAndSendMessage(Incident incident) throws Exception {
+		// LOG INCIDENT MESSAGE
+		String message = incident.getMessage();
+		log.info("INCIDENT: " + message);
+
+		// SET INPUT FIELDS
+		URL url = confs.getWebHookUrl();
+		String dashboard = confs.getLinkedDashboard();
+
+		// JSON CREATION
+		JSONObject jsonObj = new JSONObject();
+		String state = "";
+		// Compose string chat_message => This message will be sent to the
+		// SlackChat channel
+		if (confs.isNotifyAllChannel()) {
+			state = "<!channel> ";
+		}
+		if (incident.isOpen()) {
+			state = state + "dynatrace incident triggered:";
+		} else if (incident.isClosed()) {
+			state = state + "dynatrace incident ended:";
+		}
+		String title = incident.getIncidentRule().getName();
+		String chat_message = "";
+		// chat_message = chat_message + " <ul>";
+		// chat_message = chat_message + "Incident UUID: " +
+		// incident.getKey().getUUID() + "\n";
+
+		chat_message = chat_message + "Incident start: " + incident.getStartTime() + "\n";
+		chat_message = chat_message + "Incident end: " + incident.getEndTime() + "\n";
+
+		// chat_message = chat_message + "<li><strong>Status state
+		// code:</strong> " + incident.getState() + "</li>";
+
+		chat_message = chat_message + "Message: " + message + "\n";
+
+		for (Violation violation : incident.getViolations()) {
+			chat_message = chat_message + "Violated Measure: " + violation.getViolatedMeasure().getName()
+					+ " - Threshold: " + violation.getViolatedThreshold().getValue() + "\n";
+		}
+
+		con.setConnection(confs.getChannel(), confs.getWebHookUrl());
+		con.sendMessage(con, confs, title, state, chat_message, incident.getSeverity().toString());
 	}
 }

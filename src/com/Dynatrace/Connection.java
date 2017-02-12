@@ -70,6 +70,7 @@ public class Connection {
 
 		// json to string
 		String jsonString = jsonObj.toJSONString();
+		log.info("JSONString: " + jsonString);
 		// json string to bytes
 		byte[] payload = jsonString.getBytes();
 
@@ -77,49 +78,50 @@ public class Connection {
 		con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
 		con.setDoOutput(true);
 
-		// TRY TO GET OUTPUT STREAM
-		try {
+//		// TRY TO GET OUTPUT STREAM
+//		try {
 			out = con.getOutputStream();
-		}
-
-		// CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
-		catch (IOException e) {
-			log.severe("Exception thrown whilst getting output stream...");
-			log.severe(e.toString());
-			con.disconnect();
-		}
-
-		// TRY TO SEND PAYLOAD
-		try {
+//		}
+//
+//		// CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
+//		catch (IOException e) {
+//			log.severe("Exception thrown whilst getting output stream...");
+//			log.severe(e.toString());
+//			con.disconnect();
+//		}
+//
+//		// TRY TO SEND PAYLOAD
+//		try {
 			out.write(payload);
 			out.close();
-		}
-
-		// CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
-		catch (IOException e) {
-			log.severe("Exception thrown whilst writing to output stream...");
-			log.severe(e.toString());
-			con.disconnect();
-		}
-
-		// LOG PROGRESS
-		log.fine("Trying to connect...");
-
-		// TRY TO GET RESPONSE CODE
-		try {
+//		}
+//
+//		// CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
+//		catch (IOException e) {
+//			log.severe("Exception thrown whilst writing to output stream...");
+//			log.severe(e.toString());
+//			con.disconnect();
+//		}
+//
+//		// LOG PROGRESS
+//		log.fine("Trying to connect...");
+//
+//		// TRY TO GET RESPONSE CODE
+//		try {
 			responseCode = con.getResponseCode();
-			log.fine("Response Code : " + responseCode);
-		}
-
-		// CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
-		catch (IOException e) {
-			log.severe("Exception thrown whilst writing to output stream...");
-			log.severe(e.toString());
+//			log.fine("Response Code : " + responseCode);
+//		}
+//
+//		// CATCH EXCEPTION, LOG IT THEN SEND RESPONSE ERROR CODE
+//		catch (IOException e) {
+//			log.severe("Exception thrown whilst writing to output stream...");
+//			log.severe(e.toString());
+//			con.disconnect();
+//		} finally {
+//			log.info("Finally Disconnecting");
+//			con.disconnect();
+//		}
 			con.disconnect();
-		} finally {
-			con.disconnect();
-		}
-
 	}
 
 	private String getSeverityColor(String severity) {
