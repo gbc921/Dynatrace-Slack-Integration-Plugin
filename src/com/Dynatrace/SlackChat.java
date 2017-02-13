@@ -8,6 +8,7 @@
 package com.Dynatrace;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -106,6 +107,7 @@ public class SlackChat implements ActionV2 {
 			// so the plugin does not know whether the next incident is related
 			// to a DBMonitor or not
 			// TODO: Get only the two last calls from DBMonitor incident
+			// and put into one single message
 			// The last two have the real column name and actual value. The 1st
 			// one is generic
 			if (isDbMonitorPlugin(incident.getMessage().toString())) {
@@ -122,13 +124,13 @@ public class SlackChat implements ActionV2 {
 					// is the same DBMonitor incident name,
 					// so we do not alert it again
 					dbMonitorIncident.put(incident.getIncidentRule().getName().toString(), incident);
-					prepareAndSendMessage(incident);
+					prepareAndSendMessage(incident, true);
 				}
 			} else {
 				log.info("NOT DB Monitor");
 				try {
 					dbMonitorIncident.clear();
-					prepareAndSendMessage(incident);
+					prepareAndSendMessage(incident, false);
 				} catch (Exception e) {
 					log.severe("ERROR: " + e.toString());
 					return new Status(Status.StatusCode.ErrorInternal);
@@ -181,21 +183,22 @@ public class SlackChat implements ActionV2 {
 		con.disconnect();
 	}
 
-	private String patternFinder(String regex, String textToMatch) {
+	private ArrayList<String> patternFinder(String regex, String textToMatch) {
 		Pattern p = null;
 		Matcher m = null;
+		ArrayList<String> results = new ArrayList<String>();
 
-		log.warning("PATTERN: " + regex + "=" + textToMatch);
+		log.info("PATTERN: " + regex + "=" + textToMatch);
 		p = Pattern.compile(regex);
 		m = p.matcher(textToMatch);
 
 		if (m.find()) {
-			log.finer(m.group(1).toString());
-			// TODO: we should iterate here (and return an array)
-			// to cover other cases
-			return m.group(1).toString();
+			for (int i = 1; i <= m.groupCount(); i++) {
+				log.finer(m.group(i).toString());
+				results.add(m.group(i));
+			}
+			return results;
 		}
-
 		log.finer("null");
 		return null;
 	}
@@ -232,10 +235,30 @@ public class SlackChat implements ActionV2 {
 		return false;
 	}
 
-	public void prepareAndSendMessage(Incident incident) throws Exception {
+	public void prepareAndSendMessage(Incident incident, boolean isDbMonitor) throws Exception {
 		// LOG INCIDENT MESSAGE
 		String message = incident.getMessage();
 		log.info("INCIDENT: " + message);
+
+		if (isDbMonitor) {
+			ArrayList<String> dbMonitorMessage = new ArrayList<String>();
+			// the regex replaces the whole message by
+			// dbMonitorName@Host + Test (upper|lower) bound exceed
+			// when a column value incident is triggered
+			dbMonitorMessage = patternFinder("\\((.*)\\).\\w*(..*)", message);
+			if (dbMonitorMessage != null) {
+				log.info("1st Pattern: " + dbMonitorMessage.toString());
+				// we only need regex group 1 and 2
+				message = dbMonitorMessage.get(0) + dbMonitorMessage.get(1);
+			} else {
+				log.info("else");
+				dbMonitorMessage = patternFinder("\\(.*\\)", message);
+				if (dbMonitorMessage != null) {
+					log.info("2nd Pattern: " + dbMonitorMessage.toString());
+					message = dbMonitorMessage.get(0);
+				}
+			}
+		}
 
 		// SET INPUT FIELDS
 		URL url = confs.getWebHookUrl();
@@ -266,9 +289,14 @@ public class SlackChat implements ActionV2 {
 		// chat_message = chat_message + "<li><strong>Status state
 		// code:</strong> " + incident.getState() + "</li>";
 
-		chat_message = chat_message + "Message: " + message + "\n";
+		if (isDbMonitor) {
+			chat_message += "DB Monitor@Host: " + message + "\n";
+		} else {
+			chat_message += "Message: " + message + "\n";
+		}
 
 		for (Violation violation : incident.getViolations()) {
+			// TODO: Get the actual incident triggered value and compare with the threshold
 			chat_message = chat_message + "Violated Measure: " + violation.getViolatedMeasure().getName()
 					+ " - Threshold: " + violation.getViolatedThreshold().getValue() + "\n";
 		}
