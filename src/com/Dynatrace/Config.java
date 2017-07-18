@@ -6,6 +6,8 @@ import java.net.URL;
 public class Config {
 	private URL webHookUrl;
 	private boolean notifyAllChannel;
+	private boolean checkForDBMonitorPlugin;
+	private boolean printAlertDescription;
 	private String linkedDashboard;
 	private String channel;
 	private int connectionTimeout = 5000;
@@ -21,6 +23,22 @@ public class Config {
 
 	public boolean isNotifyAllChannel() {
 		return notifyAllChannel;
+	}
+
+	public boolean isCheckForDBMonitorPlugin() {
+		return checkForDBMonitorPlugin;
+	}
+
+	public void setCheckForDBMonitorPlugin(boolean checkForDBMonitorPlugin) {
+		this.checkForDBMonitorPlugin = checkForDBMonitorPlugin;
+	}
+
+	public boolean isPrintAlertDescription() {
+		return printAlertDescription;
+	}
+
+	public void setPrintAlertDescription(boolean printAlertDescription) {
+		this.printAlertDescription = printAlertDescription;
 	}
 
 	public void setNotifyAllChannel(boolean notifyAllChannel) {

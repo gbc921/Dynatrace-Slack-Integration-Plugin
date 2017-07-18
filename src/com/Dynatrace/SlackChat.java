@@ -61,6 +61,8 @@ public class SlackChat implements ActionV2 {
 		confs.setWebHookUrl(env.getConfigUrl("url"));
 		confs.setChannel(env.getConfigString("channel"));
 		confs.setNotifyAllChannel(env.getConfigBoolean("notifyAll"));
+		confs.setCheckForDBMonitorPlugin(env.getConfigBoolean("checkForDBMonitorPlugin"));
+		confs.setPrintAlertDescription(env.getConfigBoolean("printAlertDescription"));
 		confs.setLinkedDashboard(env.getConfigString("linkedDashboard"));
 
 		// connection to SlackChat needs
@@ -205,6 +207,10 @@ public class SlackChat implements ActionV2 {
 	}
 
 	private boolean isDbMonitorPlugin(String message) {
+		// if flag is not set, bail out
+		if (!confs.isCheckForDBMonitorPlugin()) {
+			return false;
+		}
 		if (message.contains("Query Monitor")) {
 			return true;
 		}
@@ -243,6 +249,8 @@ public class SlackChat implements ActionV2 {
 		// LOG INCIDENT MESSAGE
 		String message = incident.getMessage();
 		log.finer("INCIDENT: " + message);
+		
+		
 
 		if (isDbMonitor) {
 			ArrayList<String> dbMonitorMessage = new ArrayList<String>();
@@ -293,6 +301,10 @@ public class SlackChat implements ActionV2 {
 
 		// chat_message = chat_message + "<li><strong>Status state
 		// code:</strong> " + incident.getState() + "</li>";
+		
+		if (confs.isPrintAlertDescription()) {
+			chat_message = chat_message + "Description: " + incident.getIncidentRule().getDescription() + "\n";
+		}
 
 		if (isDbMonitor) {
 			chat_message += "DB Monitor@Host: " + message + "\n";
