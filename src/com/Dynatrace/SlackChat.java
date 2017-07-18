@@ -63,6 +63,7 @@ public class SlackChat implements ActionV2 {
 		confs.setNotifyAllChannel(env.getConfigBoolean("notifyAll"));
 		confs.setCheckForDBMonitorPlugin(env.getConfigBoolean("checkForDBMonitorPlugin"));
 		confs.setPrintAlertDescription(env.getConfigBoolean("printAlertDescription"));
+		confs.setPrintAlertMessage(env.getConfigBoolean("printAlertMessage"));
 		confs.setLinkedDashboard(env.getConfigString("linkedDashboard"));
 
 		// connection to SlackChat needs
@@ -305,17 +306,20 @@ public class SlackChat implements ActionV2 {
 		if (confs.isPrintAlertDescription()) {
 			chat_message = chat_message + "Description: " + incident.getIncidentRule().getDescription() + "\n";
 		}
-
-		if (isDbMonitor) {
-			chat_message += "DB Monitor@Host: " + message + "\n";
-		} else {
-			chat_message += "Message: " + message + "\n";
-		}
-
-		for (Violation violation : incident.getViolations()) {
-			// TODO: Get the actual incident triggered value and compare with the threshold
-			chat_message = chat_message + "Violated Measure: " + violation.getViolatedMeasure().getName()
-					+ " - Threshold: " + violation.getViolatedThreshold().getValue() + "\n";
+		
+		// if alert message details should be printed
+		if (confs.isPrintAlertMessage()) {
+			if (isDbMonitor) {
+				chat_message += "DB Monitor@Host: " + message + "\n";
+			} else {
+				chat_message += "Message: " + message + "\n";
+			}
+	
+			for (Violation violation : incident.getViolations()) {
+				// TODO: Get the actual incident triggered value and compare with the threshold
+				chat_message = chat_message + "Violated Measure: " + violation.getViolatedMeasure().getName()
+						+ " - Threshold: " + violation.getViolatedThreshold().getValue() + "\n";
+			}
 		}
 
 		con.setConnection(confs.getChannel(), confs.getWebHookUrl());

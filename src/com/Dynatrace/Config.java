@@ -8,6 +8,7 @@ public class Config {
 	private boolean notifyAllChannel;
 	private boolean checkForDBMonitorPlugin;
 	private boolean printAlertDescription;
+	private boolean printAlertMessage;
 	private String linkedDashboard;
 	private String channel;
 	private int connectionTimeout = 5000;
@@ -35,6 +36,14 @@ public class Config {
 
 	public boolean isPrintAlertDescription() {
 		return printAlertDescription;
+	}
+
+	public boolean isPrintAlertMessage() {
+		return printAlertMessage;
+	}
+
+	public void setPrintAlertMessage(boolean printAlertMessage) {
+		this.printAlertMessage = printAlertMessage;
 	}
 
 	public void setPrintAlertDescription(boolean printAlertDescription) {

@@ -15,6 +15,7 @@
       <property key="linkedDashboard" label="Linked Dashboard" type="string" description="Full name of dashboard to link to in alert.  Blank = none" default="" multiline="false" />
       <property key="checkForDBMonitorPlugin" label="Check For DB Monitor Plugin" type="boolean" description="Enable the check whether alert was fired from DB Monitor Plugin, trimming down part of the alert message and removing alert repetion to avoid slack polution." default="true" />
       <property key="printAlertDescription" label="Print Alert Description" type="boolean" description="If checked, prints alert description field after alarm title" default="false" />
+      <property key="printAlertMessage" label="Print Alert Message" type="boolean" description="If checked, prints alert message. Usefull to disable in case that alert description provides all information needed" default="true" />
       <property key="channel" label="Channel" type="string" description="Channel name" default="#dynatrace" multiline="false" />
     </configuration>
   </extension>
