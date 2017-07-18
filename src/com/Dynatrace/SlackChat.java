@@ -237,6 +237,9 @@ public class SlackChat implements ActionV2 {
 	}
 
 	public void prepareAndSendMessage(Incident incident, boolean isDbMonitor) throws Exception {
+		// Used  later to define incident color 
+		String incidentSeverity = "informational";
+		
 		// LOG INCIDENT MESSAGE
 		String message = incident.getMessage();
 		log.finer("INCIDENT: " + message);
@@ -274,8 +277,10 @@ public class SlackChat implements ActionV2 {
 		}
 		if (incident.isOpen()) {
 			state = state + "dynatrace incident triggered:";
+			incidentSeverity = incident.getSeverity().toString();
 		} else if (incident.isClosed()) {
 			state = state + "dynatrace incident ended:";
+			incidentSeverity = "informational";
 		}
 		String title = incident.getIncidentRule().getName();
 		String chat_message = "";
@@ -302,6 +307,6 @@ public class SlackChat implements ActionV2 {
 		}
 
 		con.setConnection(confs.getChannel(), confs.getWebHookUrl());
-		con.sendMessage(con, confs, title, state, chat_message, incident.getSeverity().toString());
+		con.sendMessage(con, confs, title, state, chat_message, incidentSeverity);
 	}
 }
