@@ -93,12 +93,13 @@ public class SlackChat implements ActionV2 {
 	@Override
 	public Status execute(ActionEnvironment env) throws Exception {
 		log.finer("Start Execute");
+
 		// Map all incidents to a collection
 		Collection<Incident> incidents = env.getIncidents();
 
 		for (Incident incident : incidents) {
-			log.info(incident.getIncidentRule().getName().toString());
-			log.info(incident.getMessage());
+			log.fine(incident.getIncidentRule().getName().toString());
+			log.fine(incident.getMessage());
 			// the point here is to check for a DBMonitor plugin incident
 			// when that's the case, the column value incident comes "repeated"
 			// 3 times
@@ -111,14 +112,14 @@ public class SlackChat implements ActionV2 {
 			// The last two have the real column name and actual value. The 1st
 			// one is generic
 			if (isDbMonitorPlugin(incident.getMessage().toString())) {
-				log.info("DB Monitor");
+				log.fine("DB Monitor");
 				if (isDbMonitorIncidentRepeated(dbMonitorIncident, incident.getIncidentRule().getName().toString())) {
-					log.info("Do nothing");
+					log.finer("Do nothing");
 					// do nothing
 					// if it is a dbmonitor incident it should have been sent
 					// before by the else below
 				} else {
-					log.info("Store and Send DB Monitor incident");
+					log.fine("Store and Send DB Monitor incident");
 					// store incident in case of the next incident
 					// (being called by the execute() method again)
 					// is the same DBMonitor incident name,
@@ -127,7 +128,7 @@ public class SlackChat implements ActionV2 {
 					prepareAndSendMessage(incident, true);
 				}
 			} else {
-				log.info("NOT DB Monitor");
+				log.fine("NOT DB Monitor");
 				try {
 					dbMonitorIncident.clear();
 					prepareAndSendMessage(incident, false);
@@ -179,7 +180,7 @@ public class SlackChat implements ActionV2 {
 	 */
 	@Override
 	public void teardown(ActionEnvironment env) throws Exception {
-		log.info("Teardown: Disconnecting");
+		log.finer("Teardown: Disconnecting");
 		con.disconnect();
 	}
 
@@ -188,18 +189,18 @@ public class SlackChat implements ActionV2 {
 		Matcher m = null;
 		ArrayList<String> results = new ArrayList<String>();
 
-		log.info("PATTERN: " + regex + "=" + textToMatch);
+		log.fine("PATTERN: " + regex + "=" + textToMatch);
 		p = Pattern.compile(regex);
 		m = p.matcher(textToMatch);
 
 		if (m.find()) {
 			for (int i = 1; i <= m.groupCount(); i++) {
-				log.finer(m.group(i).toString());
+				log.fine(m.group(i).toString());
 				results.add(m.group(i));
 			}
 			return results;
 		}
-		log.finer("null");
+		log.fine("null");
 		return null;
 	}
 
@@ -217,18 +218,18 @@ public class SlackChat implements ActionV2 {
 
 	private boolean isDbMonitorIncidentRepeated(Map<String, Incident> dbMonitorIncident, String alertName) {
 		if (dbMonitorIncident.containsKey(alertName)) {
-			log.info("Has the key: " + alertName);
+			log.fine("Has the key: " + alertName);
 
 			Incident incident = dbMonitorIncident.get(alertName);
 			long timestampDiff = System.currentTimeMillis() - incident.getStartTime().getTimestampInMs();
 
-			log.info("timestamp incident: " + String.valueOf(incident.getStartTime().getTimestampInMs()));
-			log.info("timestamp Now: " + String.valueOf(System.currentTimeMillis()));
-			log.info("timestamp diff: " + String.valueOf(timestampDiff));
+			log.finer("timestamp incident: " + String.valueOf(incident.getStartTime().getTimestampInMs()));
+			log.finer("timestamp Now: " + String.valueOf(System.currentTimeMillis()));
+			log.finer("timestamp diff: " + String.valueOf(timestampDiff));
 			// it may be the case that the same incident happens again without
 			// being the repeated scenario
 			if (timestampDiff <= 60000) {
-				log.info("Is less then 60s from this last alert");
+				log.fine("Is less then 60s from this last alert");
 				return true;
 			}
 		}
@@ -238,7 +239,7 @@ public class SlackChat implements ActionV2 {
 	public void prepareAndSendMessage(Incident incident, boolean isDbMonitor) throws Exception {
 		// LOG INCIDENT MESSAGE
 		String message = incident.getMessage();
-		log.info("INCIDENT: " + message);
+		log.finer("INCIDENT: " + message);
 
 		if (isDbMonitor) {
 			ArrayList<String> dbMonitorMessage = new ArrayList<String>();
@@ -247,14 +248,13 @@ public class SlackChat implements ActionV2 {
 			// when a column value incident is triggered
 			dbMonitorMessage = patternFinder("\\((.*)\\).\\w*(..*)", message);
 			if (dbMonitorMessage != null) {
-				log.info("1st Pattern: " + dbMonitorMessage.toString());
+				log.fine("1st Pattern: " + dbMonitorMessage.toString());
 				// we only need regex group 1 and 2
 				message = dbMonitorMessage.get(0) + dbMonitorMessage.get(1);
 			} else {
-				log.info("else");
 				dbMonitorMessage = patternFinder("\\(.*\\)", message);
 				if (dbMonitorMessage != null) {
-					log.info("2nd Pattern: " + dbMonitorMessage.toString());
+					log.fine("2nd Pattern: " + dbMonitorMessage.toString());
 					message = dbMonitorMessage.get(0);
 				}
 			}

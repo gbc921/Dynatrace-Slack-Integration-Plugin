@@ -70,7 +70,7 @@ public class Connection {
 
 		// json to string
 		String jsonString = jsonObj.toJSONString();
-		log.info("JSONString: " + jsonString);
+		log.finer("JSONString: " + jsonString);
 		// json string to bytes
 		byte[] payload = jsonString.getBytes();
 
